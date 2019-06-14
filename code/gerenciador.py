@@ -29,6 +29,8 @@ REQUEST_REPORT = 6
 
 # Definicao de porta e IP a serem utilizados
 IP = "127.0.0.1"
+
+# Configurar porta para cada elemento cliente...
 SENSOR_PORT = 1234
 
 TEST_PORT = 1235
@@ -55,6 +57,10 @@ def receive_message(client_socket):
 		return False
 
 
+# Funcao que cria o socket, set o sockopt, faz o bind a porta certa e seta o listen
+# para cada socket separado
+def socket_set_up(this_socket, ip, host):
+	pass
 
 # End of aux functions
 
