@@ -15,6 +15,8 @@ ATUADOR_CO2 = 3
 AQUECEDOR = 4
 RESFRIADOR = 5
 
+CLIENTE = 6
+
 # Mensagens (global)
 CONECTA_SENSOR = 0
 CONECTA_ATUADOR = 1
@@ -26,14 +28,11 @@ REQUEST_REPORT = 6
 
 
 
-
 # Definicao de porta e IP a serem utilizados
 IP = "127.0.0.1"
 
 # Configurar porta para cada elemento cliente...
 SENSOR_PORT = 1234
-
-TEST_PORT = 1235
 # Start of aux functions
 
 def receive_message(client_socket):
@@ -57,64 +56,74 @@ def receive_message(client_socket):
 		return False
 
 
-# Funcao que cria o socket, set o sockopt, faz o bind a porta certa e seta o listen
-# para cada socket separado
-def socket_set_up(this_socket, ip, host):
-	pass
+
 
 # End of aux functions
 
 
 # Configura socket para utilizar protocolo TCP e STREAM???
-sensor_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 # Ver oq isso faz???
-sensor_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 # Bind do socket a porta e ao IP
-sensor_socket.bind((IP, SENSOR_PORT))
+server_socket.bind((IP, SENSOR_PORT))
 
+server_socket.listen()
 
-#############################33
+# Lista de sockets ativos,a principio apenas com o do server
+sockets_list = [server_socket]
 
-
-test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-# Ver oq isso faz???
-test_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-# Bind do socket a porta e ao IP
-test_socket.bind((IP, TEST_PORT))
-
-# Seta o socket para aguardar conexoes
-test_socket.listen()
-
-sockets_list = [test_socket]
-
-clients = {}
+# Dicionario para gerar o relatorio de medidas a ser enviado para o cliente caso requisitado
+medidas = {
+	'co2': 'sth',
+	'temperatura': 'sth',
+	'umidade': 'sth'
+}
 
 while True:
-	full_msg = ''
+	read_sockets, _, _ = select.select(sockets_list, [], [])
+	
+	for notified_socket in read_sockets:
+			if notified_socket == server_socket: # se for uma nova conexao a ser estabelecida, ela eh aceita
+					client_socket, client_address = server_socket.accept()
+					sockets_list.append(client_socket)
+					print(f"Accepted new connection from {client_address[0]}:{client_address[1]}")
+			else:
 
-	client_socket, addr = test_socket.accept()
-	print(f"Connection from {addr} has been established.")
+				msg = receive_message(notified_socket)
+				#print("Conteudo da msg: " + str(msg))
+			
+				if msg['type'] == CONECTA_SENSOR or msg['type'] == CONECTA_ATUADOR:
+					# Obtem o id do sensor/atuador que enviou
+					id_sender = int(msg['msg'][0])
 
-	test_client, ad = 
+					#obtem a flag de requisicao (1, pedindo para conectar)
+					flag_req = int(msg['msg'][1])
+					#print(flag_req)
+					if flag_req != 1:
+						out_msg_content = str(id_sender) + str(0) # n conectou
+					else:
+						out_msg_content = str(id_sender) + str(1) # conectou
 
-	msg = receive_message(client_socket)
-	print(msg)
-	if msg['type'] == CONECTA_SENSOR:
-		# Obtem o id do sensor/atuador que enviou
-		id_sender = int(msg['msg'][0])
+					out_msg_header = str(CONECTA_GERENCIADOR) + str(len(out_msg_content)).zfill(3)
+					out_msg = (out_msg_header + out_msg_content).encode('utf-8')	
+					notified_socket.send(out_msg)
 
-		#obtem a flag de requisicao (1, pedindo para conectar)
-		flag_req = int(msg['msg'][1])
-		print(flag_req)
-		if flag_req != 1:
-			out_msg_content = str(id_sender) + str(0) # n conectou
-		else:
-			out_msg_content = str(id_sender) + str(1) # conectou
+				elif msg['type'] == SENSOR_SEND_REPORT:
+					# Obtem a origem do envio do relatorio assim como o valor da medida
+					id_sender = int(msg['msg'][0])
+					val = msg['msg'][1:]
 
-		out_msg_header = str(CONECTA_GERENCIADOR) + str(len(out_msg_content)).zfill(3)
-		out_msg = (out_msg_header + out_msg_content).encode('utf-8')	
-		client_socket.send(out_msg)
+					# atualiza o relatorio de medidas a ser enviado para o cliente
+					if id_sender == SENSOR_TEMP:
+						medidas['temperatura'] = val
+					
+					elif id_sender == SENSOR_CO2:
+						medidas['co2'] = val
+					
+					elif id_sender == SENSOR_UM:
+						medidas['umidade'] = val
+
+					print(medidas)

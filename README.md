@@ -1,8 +1,11 @@
 # Redes_Estufa
 
 ## TO DO:
-* Entender como empregar mais de um socket no server - um pra cada atuador, sensor e cliente (usar socket_list inserir na ordem do id de cada elemento)
-* Implementar a maioria dos clientes...
+* Entender como empregar mais de um socket no server - um pra cada atuador, sensor e cliente (usar socket_list inserir na ordem do id de cada elemento) - DONE (usando select)
+* Implementar tratamento Sensores - DONE
+* Implementar tratamento Atuadores
+* Implementar tratamento Clientes
+* Corrigir erro: cancelar qualquer um dos processos faz com que a rede toda caia
 * Pesquisar duvidas teoricas anotadas no gerenciador.py
 
 
@@ -60,4 +63,4 @@ Aplicação 01 - Estufa Inteligente: "Estufas são utilizadas no cultivo de plan
 </pre>
 
 ## Header:
-Identificara o tipo da mensagem...
+Identificara o tipo da mensagem e o tamanho desta. Como as mensagens (e o seu header) sera passado como string, serao reservado 4 caracters (bytes) para o header sendo um para o tipo da mensagem (de 0 a 6) e 3 caracters para o tamanho (se o tamanho for menor que 100 os caracteres faltantes sao preenchidos com '0' Ex.: '042')
