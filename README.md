@@ -52,16 +52,17 @@ Aplicação 01 - Estufa Inteligente: "Estufas são utilizadas no cultivo de plan
 	liga/desliga(obrigatório).
 
 	SEND_REPORT: //GERENCIADOR -> CLIENTE
-	id_sensor/all;
-	valor/valores.
+	valor_co2;
+	valor_temperatura;
+	valor_umidade.
 
-	SET_PARS: //CLIENTE -> GERENCIADOR
+	SET_PARS: //CLIENTE -> GERENCIADOR - DONE
 	valor_temp_min, valor_temp_max;
 	valor_umidade_min, valor_umidade_max;
 	valor_co2_min, valor_co2_max;
 
 	REQUEST_REPORT: //CLIENTE -> GERENCIADOR
-	id_sensor/all;
+	all;
 
 
 

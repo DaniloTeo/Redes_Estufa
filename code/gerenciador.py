@@ -79,9 +79,9 @@ sockets_list = [server_socket]
 
 # Dicionario para gerar o relatorio de medidas a ser enviado para o cliente caso requisitado
 relatorio = {
-	'co2': '31.00',
-	'temperatura': '28.55',
-	'umidade': '31.00'
+	'co2': '31.00%',
+	'temperatura': '28.55gr C',
+	'umidade': '31.00%'
 }
 
 # Dicionario para guardar os parametros enviados pelo cliente 
@@ -148,19 +148,22 @@ while True:
 					elif id_sender == SENSOR_UM:
 						relatorio['umidade'] = val
 
-					print(medidas)
-					print(relatorio)
+					#print(medidas)
+					#print(relatorio)
 				elif msg['type'] == SET_PARS:
-					pass
-					# medidas['co2_max'] = msg['msg'][0:5]
-					# medidas['co2_min'] = msg['msg'][5:10]
-					# medidas['temp_max'] = msg['msg'][10:15]
-					# medidas['temp_min'] = msg['msg'][15:20]
-					# medidas['umidade_max'] = msg['msg'][20:25]
-					# medidas['umidade_min'] = msg['msg'][25:30]
+					medidas['co2_max'] = msg['msg'][0:5]
+					medidas['co2_min'] = msg['msg'][5:10]
+					medidas['temp_max'] = msg['msg'][10:15]
+					medidas['temp_min'] = msg['msg'][15:20]
+					medidas['umidade_max'] = msg['msg'][20:25]
+					medidas['umidade_min'] = msg['msg'][25:30]
+					#print("SET_PARS: " + str(medidas))
 
 				elif msg['type'] == REQUEST_REPORT:
-					pass
+					out_msg_content = relatorio['co2'] + relatorio['temperatura'] + relatorio['umidade']
+					out_msg_header = str(GERENCIADOR_SEND_REPORT) + str(len(out_msg_content)).zfill(3)
+					out_msg = (out_msg_header + out_msg_content).encode('utf-8')
+					notified_socket.send(out_msg)
 
 				if float(medidas['co2_max']) <= float(relatorio['co2'][0:5]):
 					# Se o maximo definido for menor que o atual -> desliga
