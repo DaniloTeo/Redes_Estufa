@@ -4,7 +4,9 @@ import errno
 import sys
 
 # 1 byte para o tipo da mensagem e mais 3 para o tamanho
-HEADER_LENGTH = 4 
+# tstmp | tipo | tam| ...
+# 0023 | 2 | 005 | ... 
+HEADER_LENGTH = 8
 
 #Sensores e atuadores (global)
 SENSOR_CO2 = 0
@@ -47,11 +49,12 @@ def receive_message(client_socket):
 			return False
 
 		header = header.decode('utf-8').strip()
-		msg_type = int(header[0])
-		msg_tam = int(header[1:4])
+		msg_it = int(header[0:4])
+		msg_type = int(header[4])
+		msg_tam = int(header[5:])
 		msg = client_socket.recv(msg_tam).decode('utf-8')
 		
-		return {'type': msg_type, 'tam': msg_tam, 'msg': msg}
+		return {'iteration':msg_it, 'type': msg_type, 'tam': msg_tam, 'msg': msg}
 
 	except:
 		#print("entrou no except")
@@ -94,11 +97,18 @@ medidas = {
 	'umidade_min': '30.00'
 }
 
+ITERACAO = 0
+IT_CO2 = -1
+IT_TEMP = -1
+IT_UMIDADE = -1
 
 while True:
 	# Salva todos os sockets prontos para leitura em read_sockets
-	read_sockets, _, _ = select.select(sockets_list, [], [])
-	
+	try:
+		read_sockets, _, _ = select.select(sockets_list, [], [])
+	except:
+		print("Programa encerrado")
+		break
 	# Para cada socket faca
 	for notified_socket in read_sockets:
 			if notified_socket == server_socket: # se for uma nova conexao a ser estabelecida, ela eh aceita
@@ -108,7 +118,12 @@ while True:
 			else:
 
 				# Se nao for uma nova conexao recebe a mensagem do socket
+				
 				msg = receive_message(notified_socket)
+				
+				if msg is False:
+					break
+
 				#print("Conteudo da msg: " + str(msg))
 			
 				if msg['type'] == CONECTA_SENSOR or msg['type'] == CONECTA_ATUADOR:
@@ -125,13 +140,16 @@ while True:
 						out_msg_content = str(id_sender) + str(1) # conectou
 
 					# Depois que o payload foi montado, eh a vez do header
-					out_msg_header = str(CONECTA_GERENCIADOR) + str(len(out_msg_content)).zfill(3)
+					out_msg_header = str(0).zfill(4) + str(CONECTA_GERENCIADOR) + str(len(out_msg_content)).zfill(3)
 					
 					# Composicao da mensagem por completo e codificao para bytes 
 					out_msg = (out_msg_header + out_msg_content).encode('utf-8')	
 					
 					# Envio da mensagem
-					notified_socket.send(out_msg)
+					try:
+						notified_socket.send(out_msg)
+					except:
+						break
 
 				elif msg['type'] == SENSOR_SEND_REPORT:
 					# Obtem a origem do envio do relatorio assim como o valor da medida
@@ -141,12 +159,16 @@ while True:
 					# atualiza o relatorio de medidas a ser enviado para o cliente
 					if id_sender == SENSOR_TEMP:
 						relatorio['temperatura'] = val
-					
+						IT_TEMP = msg['iteration']
+
 					elif id_sender == SENSOR_CO2:
 						relatorio['co2'] = val
-					
+						IT_CO2 = msg['iteration']
+
 					elif id_sender == SENSOR_UM:
 						relatorio['umidade'] = val
+						IT_UMIDADE = msg['iteration']
+
 
 					#print(medidas)
 					#print(relatorio)
@@ -161,68 +183,93 @@ while True:
 
 				elif msg['type'] == REQUEST_REPORT:
 					out_msg_content = relatorio['co2'] + relatorio['temperatura'] + relatorio['umidade']
-					out_msg_header = str(GERENCIADOR_SEND_REPORT) + str(len(out_msg_content)).zfill(3)
+					out_msg_header = str(ITERACAO).zfill(4) + str(GERENCIADOR_SEND_REPORT) + str(len(out_msg_content)).zfill(3)
 					out_msg = (out_msg_header + out_msg_content).encode('utf-8')
-					notified_socket.send(out_msg)
+					try:
+						notified_socket.send(out_msg)
+					except:
+						break
 
 				if float(medidas['co2_max']) <= float(relatorio['co2'][0:5]):
 					# Se o maximo definido for menor que o atual -> desliga
 					out_msg_content = str(ATUADOR_CO2) + 'OFF'
-					out_msg_header = str(ONOFF_ATUADOR) + str(len(out_msg_content)).zfill(3)
+					out_msg_header = str(IT_CO2).zfill(4) +str(ONOFF_ATUADOR) + str(len(out_msg_content)).zfill(3)
 					out_msg = (out_msg_header + out_msg_content).encode('utf-8')
 					
 					# Se a lista ja possuir o socket do atuador em questao, envia a mensagem
 					if len(sockets_list) > ATUADOR_CO2+1:
-						sockets_list[ATUADOR_CO2+1].send(out_msg)
+						try:
+							sockets_list[ATUADOR_CO2+1].send(out_msg)
+						except:
+							break
 				
 				elif float(medidas['co2_min']) >= float(relatorio['co2'][0:5]):
 					# Se o minimo definido for maior que o atual -> liga
 					out_msg_content = str(ATUADOR_CO2) + 'ON '
-					out_msg_header = str(ONOFF_ATUADOR) + str(len(out_msg_content)).zfill(3)
+					out_msg_header = str(IT_CO2).zfill(4) +str(ONOFF_ATUADOR) + str(len(out_msg_content)).zfill(3)
 					out_msg = (out_msg_header + out_msg_content).encode('utf-8')
 					
 					# Se a lista ja possuir o socket do atuador em questao, envia a mensagem
 					if len(sockets_list) > ATUADOR_CO2+1:
-						sockets_list[ATUADOR_CO2+1].send(out_msg)
+						try:
+							sockets_list[ATUADOR_CO2+1].send(out_msg)
+						except:
+							break
 				
 				if float(medidas['temp_max']) <= float(relatorio['temperatura'][0:5]):
 					# Se o maximo definido for menor que o atual -> desliga aquecedor e liga resfriador
 					out_msg_content = str(AQUECEDOR_RESFRIADOR) + 'OFFON '
-					out_msg_header = str(ONOFF_ATUADOR) + str(len(out_msg_content)).zfill(3)
+					out_msg_header = str(IT_TEMP).zfill(4) +str(ONOFF_ATUADOR) + str(len(out_msg_content)).zfill(3)
 					out_msg = (out_msg_header + out_msg_content).encode('utf-8')
 					
 					# Se a lista ja possuir o socket do atuador em questao, envia a mensagem
 					if len(sockets_list) > AQUECEDOR_RESFRIADOR+1:
-						sockets_list[AQUECEDOR_RESFRIADOR+1].send(out_msg)
+						try:
+							sockets_list[AQUECEDOR_RESFRIADOR+1].send(out_msg)
+						except:
+							break
 				
 				elif float(medidas['temp_min']) >= float(relatorio['temperatura'][0:5]):
 					# Se o minimo definido for maior que o atual -> liga aquecedor e desliga resfriador
 					out_msg_content = str(AQUECEDOR_RESFRIADOR) + 'ON OFF'
-					out_msg_header = str(ONOFF_ATUADOR) + str(len(out_msg_content)).zfill(3)
+					out_msg_header = str(IT_TEMP).zfill(4) +str(ONOFF_ATUADOR) + str(len(out_msg_content)).zfill(3)
 					out_msg = (out_msg_header + out_msg_content).encode('utf-8')
 					
 					# Se a lista ja possuir o socket do atuador em questao, envia a mensagem
 					if len(sockets_list) > AQUECEDOR_RESFRIADOR+1:
-						sockets_list[AQUECEDOR_RESFRIADOR+1].send(out_msg)
+						try:
+							sockets_list[AQUECEDOR_RESFRIADOR+1].send(out_msg)
+						except:
+							break
 				
 				if float(medidas['umidade_max']) <= float(relatorio['umidade'][0:5]):
 					# Se o maximo definido for menor que o atual -> desliga
 					out_msg_content = str(IRRIGADOR) + 'OFF'
-					out_msg_header = str(ONOFF_ATUADOR) + str(len(out_msg_content)).zfill(3)
+					out_msg_header = str(IT_UMIDADE).zfill(4) +str(ONOFF_ATUADOR) + str(len(out_msg_content)).zfill(3)
 					out_msg = (out_msg_header + out_msg_content).encode('utf-8')
 					
 					# Se a lista ja possuir o socket do atuador em questao, envia a mensagem
 					if len(sockets_list) > IRRIGADOR+1:
-						sockets_list[IRRIGADOR+1].send(out_msg)
+						try:
+							sockets_list[IRRIGADOR+1].send(out_msg)
+						except:
+							break
 				
 				elif float(medidas['umidade_min']) >= float(relatorio['umidade'][0:5]):
 					# Se o minimo definido for maior que o atual -> liga
 					out_msg_content = str(IRRIGADOR) + 'ON '
-					out_msg_header = str(ONOFF_ATUADOR) + str(len(out_msg_content)).zfill(3)
+					out_msg_header = str(IT_UMIDADE).zfill(4) + str(ONOFF_ATUADOR) + str(len(out_msg_content)).zfill(3)
 					out_msg = (out_msg_header + out_msg_content).encode('utf-8')
 					
 					# Se a lista ja possuir o socket do atuador em questao, envia a mensagem
 					if len(sockets_list) > IRRIGADOR+1:
-						sockets_list[IRRIGADOR+1].send(out_msg)
-
+						try:
+							sockets_list[IRRIGADOR+1].send(out_msg)
+						except:
+							break
 				
+				print(f"({ITERACAO}): {IT_CO2}, {IT_TEMP}, {IT_UMIDADE}")			
+				ITERACAO +=1
+
+for socket in sockets_list:
+	socket.close()				

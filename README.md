@@ -4,9 +4,9 @@
 * Entender como empregar mais de um socket no server - um pra cada atuador, sensor e cliente (usar socket_list inserir na ordem do id de cada elemento) - DONE (usando select)
 * Implementar tratamento Sensores - DONE
 * Implementar tratamento Atuadores - DONE
-* Implementar tratamento Clientes
-* Corrigir erro: cancelar qualquer um dos processos faz com que a rede toda caia
-* Pesquisar duvidas teoricas anotadas no gerenciador.py
+* Implementar tratamento Clientes - DONE
+* Corrigir erro: cancelar qualquer um dos processos faz com que a rede toda caia - DONE
+* Pesquisar duvidas teoricas anotadas no gerenciador.py - !!!!
 
 
 ## Aplicação:
@@ -51,7 +51,7 @@ Aplicação 01 - Estufa Inteligente: "Estufas são utilizadas no cultivo de plan
 	id_atuador(obrigatório);
 	liga/desliga(obrigatório).
 
-	SEND_REPORT: //GERENCIADOR -> CLIENTE
+	SEND_REPORT: //GERENCIADOR -> CLIENTE - DONE
 	valor_co2;
 	valor_temperatura;
 	valor_umidade.
@@ -61,7 +61,7 @@ Aplicação 01 - Estufa Inteligente: "Estufas são utilizadas no cultivo de plan
 	valor_umidade_min, valor_umidade_max;
 	valor_co2_min, valor_co2_max;
 
-	REQUEST_REPORT: //CLIENTE -> GERENCIADOR
+	REQUEST_REPORT: //CLIENTE -> GERENCIADOR - DONE
 	all;
 
 
@@ -70,4 +70,4 @@ Aplicação 01 - Estufa Inteligente: "Estufas são utilizadas no cultivo de plan
 </pre>
 
 ## Header:
-Identificara o tipo da mensagem e o tamanho desta. Como as mensagens (e o seu header) sera passado como string, serao reservado 4 caracters (bytes) para o header sendo um para o tipo da mensagem (de 0 a 6) e 3 caracters para o tamanho (se o tamanho for menor que 100 os caracteres faltantes sao preenchidos com '0' Ex.: '042')
+Identificara o timestamp da mensagem, o tipo da mensagem e o tamanho desta. Como as mensagens (e o seu header) sera passado como string, serao reservado 8 caracters (bytes) para o header sendo 4 para a o timestamp, um para o tipo da mensagem (de 0 a 7) e 3 caracters para o tamanho (se o tamanho for menor que 100 os caracteres faltantes sao preenchidos com '0' Ex.: '042')

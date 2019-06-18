@@ -4,7 +4,7 @@ import random
 import time
 
 # 1 byte para o tipo da mensagem e mais 3 para o tamanho
-HEADER_LENGTH = 4 
+HEADER_LENGTH = 8 
 
 #Sensores e atuadores (global)
 SENSOR_CO2 = 0
@@ -39,24 +39,25 @@ client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect((IP, PORT))
 client_socket.setblocking(True)
 
-
+N = 0
 
 while True:
 	# Envia mensagem de requisicao de conexao
 	message = str(SENSOR_TEMP) + str(1)
-	header = str(CONECTA_SENSOR) + str(len(message)).zfill(3)
+	header = str(0).zfill(4) + str(CONECTA_SENSOR) + str(len(message)).zfill(3)
 	full_msg = (header + message).encode('utf-8')
 	client_socket.send(full_msg)
 
 	# Recebe autorizacao ou negacao de conexao
 	header = client_socket.recv(HEADER_LENGTH)				
 	if not len(header):
-		print("deu ruim no header")
-		sys.exit()
+		#print("deu ruim no header")
+		break
 	
 	header = header.decode('utf-8').strip()
-	msg_type = int(header[0]) # tipo da mensagem se encontra no primeiro char do header
-	msg_tam = int(header[1:4]) # tamanho da mensagem se encontra nos 3 chars seguintes
+	msg_it = int(header[0:4])
+	msg_type = int(header[4])
+	msg_tam = int(header[5:])
 	msg = client_socket.recv(msg_tam).decode('utf-8').strip() # recebe a mensagem baseado no tamanho
 	print(f"Tipo: {msg_type}\nTamanho: {msg_tam}\nMensagem: {msg}")
 
@@ -69,12 +70,20 @@ while True:
 		
 		# Obtem apenas ate as duas primeiras casas decimais do numero
 		val = str(val)[:5] + 'gr C'
-		print(f"String: {val}")
+		print(f"{N}: {val}")
 		
 		message = str(SENSOR_TEMP) + val
-		header = str(SENSOR_SEND_REPORT) + str(len(message)).zfill(3)
+		header = str(N).zfill(4) + str(SENSOR_SEND_REPORT) + str(len(message)).zfill(3)
 		full_msg = (header + message).encode('utf-8')
-		client_socket.send(full_msg)
+		try:
+			client_socket.send(full_msg)
+		except:
+			break
 		
+		N += 1
+
 		# espera um segundo e repete o processo
 		time.sleep(1)
+	break
+
+client_socket.close()
