@@ -3,7 +3,7 @@
 ## TO DO:
 * Entender como empregar mais de um socket no server - um pra cada atuador, sensor e cliente (usar socket_list inserir na ordem do id de cada elemento) - DONE (usando select)
 * Implementar tratamento Sensores - DONE
-* Implementar tratamento Atuadores
+* Implementar tratamento Atuadores - DONE
 * Implementar tratamento Clientes
 * Corrigir erro: cancelar qualquer um dos processos faz com que a rede toda caia
 * Pesquisar duvidas teoricas anotadas no gerenciador.py
@@ -29,30 +29,36 @@ Aplicação 01 - Estufa Inteligente: "Estufas são utilizadas no cultivo de plan
 ## Mensagens:
 <pre>
 
-	CONECTA_SENSOR: //SENSOR -> GERENCIADOR
+	
+	CONECTA_SENSOR: //SENSOR -> GERENCIADOR - DONE
 	id_sensor (obrigatório);
 	flag_requisicao (obrigatório);
 
-	CONECTA_ATUADOR: //ATUADOR -> GERENCIADOR
+	CONECTA_ATUADOR: //ATUADOR -> GERENCIADOR - DONE
 	id_atuador (obrigatório);
 	flag_requisicao (obrigatório);
 
-	CONECTA_GERENCIADOR: //GERENCIADOR -> SENSOR/ATUADOR
+	CONECTA_GERENCIADOR: //GERENCIADOR -> SENSOR/ATUADOR - DONE
 	id_sensor/id_atuador (obrigatório);
 	flag_conectado (obrigatório);
 
 
-	SEND_REPORT: //SENSOR -> GERENCIADOR
+	SEND_REPORT: //SENSOR -> GERENCIADOR - DONE
 	id_sensor (obrigatório);
 	val_medida(obrigatório);	
 
-	ONOFF_ATUADOR: //GERENCIADOR -> ATUADOR
+	ONOFF_ATUADOR: //GERENCIADOR -> ATUADOR - DONE
 	id_atuador(obrigatório);
 	liga/desliga(obrigatório).
 
 	SEND_REPORT: //GERENCIADOR -> CLIENTE
 	id_sensor/all;
 	valor/valores.
+
+	SET_PARS: //CLIENTE -> GERENCIADOR
+	valor_temp_min, valor_temp_max;
+	valor_umidade_min, valor_umidade_max;
+	valor_co2_min, valor_co2_max;
 
 	REQUEST_REPORT: //CLIENTE -> GERENCIADOR
 	id_sensor/all;

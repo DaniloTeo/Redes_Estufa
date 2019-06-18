@@ -12,8 +12,9 @@ SENSOR_TEMP = 1
 SENSOR_UM = 2
 
 ATUADOR_CO2 = 3
-AQUECEDOR = 4
-RESFRIADOR = 5
+AQUECEDOR_RESFRIADOR = 4
+#RESFRIADOR = 5
+IRRIGADOR = 5
 
 CLIENTE = 6
 
@@ -25,6 +26,7 @@ SENSOR_SEND_REPORT = 3
 ONOFF_ATUADOR = 4
 GERENCIADOR_SEND_REPORT = 5
 REQUEST_REPORT = 6
+SET_PARS = 7
 
 
 
@@ -40,29 +42,32 @@ client_socket.setblocking(True)
 
 
 while True:
-	# Send messages
+	# Envia mensagem de requisicao de conexao
 	message = str(SENSOR_TEMP) + str(1)
 	header = str(CONECTA_SENSOR) + str(len(message)).zfill(3)
 	full_msg = (header + message).encode('utf-8')
 	client_socket.send(full_msg)
 
-	# Receive messages
+	# Recebe autorizacao ou negacao de conexao
 	header = client_socket.recv(HEADER_LENGTH)				
 	if not len(header):
 		print("deu ruim no header")
 		sys.exit()
+	
 	header = header.decode('utf-8').strip()
-	msg_type = int(header[0])
-	msg_tam = int(header[1:4])
-	msg = client_socket.recv(msg_tam).decode('utf-8').strip()
+	msg_type = int(header[0]) # tipo da mensagem se encontra no primeiro char do header
+	msg_tam = int(header[1:4]) # tamanho da mensagem se encontra nos 3 chars seguintes
+	msg = client_socket.recv(msg_tam).decode('utf-8').strip() # recebe a mensagem baseado no tamanho
 	print(f"Tipo: {msg_type}\nTamanho: {msg_tam}\nMensagem: {msg}")
 
 	while True:
-		# gera valores aleatorios para mock
+		# Laco para gerar os valores dos sensores e envia-los ao gerenciador
+
+		# gera valores aleatorios para mock do sensor
 		val = random.uniform(25.0, 40.0)
 		#print(f"Numerico: {val}")
 		
-		# Obtem apenas ate as duas primeiras casas decimais
+		# Obtem apenas ate as duas primeiras casas decimais do numero
 		val = str(val)[:5] + 'gr C'
 		print(f"String: {val}")
 		
@@ -70,5 +75,6 @@ while True:
 		header = str(SENSOR_SEND_REPORT) + str(len(message)).zfill(3)
 		full_msg = (header + message).encode('utf-8')
 		client_socket.send(full_msg)
-		# espera um segundo e reenvia a mensagem
+		
+		# espera um segundo e repete o processo
 		time.sleep(1)

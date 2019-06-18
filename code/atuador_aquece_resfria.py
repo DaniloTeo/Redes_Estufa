@@ -39,12 +39,13 @@ client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect((IP, PORT))
 client_socket.setblocking(True)
 
-
+estado_aquecedor = ''
+estado_resfriador = ''
 
 while True:
 	# Envia mensagem de requisicao de conexao
-	message = str(SENSOR_CO2) + str(1)
-	header = str(CONECTA_SENSOR) + str(len(message)).zfill(3)
+	message = str(AQUECEDOR_RESFRIADOR) + str(1)
+	header = str(CONECTA_ATUADOR) + str(len(message)).zfill(3)
 	full_msg = (header + message).encode('utf-8')
 	client_socket.send(full_msg)
 
@@ -53,29 +54,31 @@ while True:
 	if not len(header):
 		print("deu ruim no header")
 		sys.exit()
-	
 	header = header.decode('utf-8').strip()
-	msg_type = int(header[0])
-	msg_tam = int(header[1:4])
-	msg = client_socket.recv(msg_tam).decode('utf-8').strip()
-	
+	msg_type = int(header[0])# tipo de mensagem
+	msg_tam = int(header[1:4]) # tamanho da mensagem
+	msg = client_socket.recv(msg_tam).decode('utf-8').strip() # recebe o payload baseado no tamanho
 	print(f"Tipo: {msg_type}\nTamanho: {msg_tam}\nMensagem: {msg}")
 
 	while True:
-		# Laco para gerar os valores do sensor e envia-los ao gerenciador
+		# laco para receber o comando de ON ou OFF tanto para o resfriador quanto para o
+		# aquecedor sempre seguindo a ordem: CMD_AQUECEDOR CMD_RESFRIADOR
+		print('falae')
+		header = client_socket.recv(HEADER_LENGTH)
 
-		# gera valores aleatorios para mock
-		val = random.uniform(0.0, 100.0)
-		#print(f"Numerico: {val}")
+		if not len(header):
+			print("deu ruim no header")
+			sys.exit()
+
+		header = header.decode('utf-8').strip()
+		#print(header)
+
+		msg_type = int(header[0])
+		msg_tam = int(header[1:4])
+		msg = client_socket.recv(msg_tam).decode('utf-8').strip()
+		print(msg)
 		
-		# Obtem apenas ate as duas primeiras casas decimais
-		val = str(val)[:5] + '%'
-		print(f"String: {val}")
-		
-		message = str(SENSOR_CO2) + val
-		header = str(SENSOR_SEND_REPORT) + str(len(message)).zfill(3)
-		full_msg = (header + message).encode('utf-8')
-		client_socket.send(full_msg)
-		
-		# espera um segundo e repete o processo
-		time.sleep(1)
+		estado_aquecedor = msg[1:4]
+		estado_resfriador = msg[4:]
+
+		print(f"Estado do Aquecedor: {estado_aquecedor}\nEstado do Resfriador: {estado_resfriador}")
