@@ -1,10 +1,18 @@
-import socket
-import select
-import random
-import time
-import sys
+'''
+Codigo para simular o gerenciamento de um Aquecedor e de um Resfriador baseado nas
+medidas estabelecidas pelo usuario como delimitantes.
+O programa estabelece conexao com o Gerenciador e a partir de entao aguarda o envio de
+requisicoes de ligar/desligar deste.
 
-# 1 byte para o tipo da mensagem e mais 3 para o tamanho
+Bruno Mitsuo Homma 	9292625
+Danilo da Costa Telles Teo 	9293626
+
+
+'''
+
+import socket
+
+# 4 bytes para o timestamp, 1 byte para o tipo da mensagem e mais 3 para o tamanho
 HEADER_LENGTH = 8 
 
 #Sensores e atuadores (global)
@@ -14,7 +22,6 @@ SENSOR_UM = 2
 
 ATUADOR_CO2 = 3
 AQUECEDOR_RESFRIADOR = 4
-#RESFRIADOR = 5
 IRRIGADOR = 5
 
 CLIENTE = 6
@@ -36,10 +43,15 @@ SET_PARS = 7
 IP = "127.0.0.1"
 PORT = 1234
 
+# Definicao dos protocolos IPv4 e TCP
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# Abertura para conexoes
 client_socket.connect((IP, PORT))
+
+#Modo bloqueante
 client_socket.setblocking(True)
 
+# Variaveis para armazenar o estado (ON/OFF) do aquecedor e do resfriador
 estado_aquecedor = ''
 estado_resfriador = ''
 
@@ -54,14 +66,24 @@ while True:
 
 	# Recebe mensagem de aceitacao ou negacao de conexao
 	header = client_socket.recv(HEADER_LENGTH)				
+	
 	if not len(header):
-		#print("deu ruim no header")
+		#Se n conseguiu ler o header, a execucao eh encerrada
 		break
+	# Recebe o header e decodifica para o padrao utf-8
 	header = header.decode('utf-8').strip()
+	
+	# Extrai o timestamp da iteracao
 	msg_it = int(header[0:4])
+
+	# Extrai o tipo da mensagem
 	msg_type = int(header[4])
+
+	# Extrai o tamanho do payload
 	msg_tam = int(header[5:])
-	msg = client_socket.recv(msg_tam).decode('utf-8').strip() # recebe o payload baseado no tamanho
+
+	# recebe o payload baseado no tamanho
+	msg = client_socket.recv(msg_tam).decode('utf-8').strip() 
 	print(f"Tipo: {msg_type}\nTamanho: {msg_tam}\nMensagem: {msg}")
 
 	while True:
@@ -71,23 +93,20 @@ while True:
 		header = client_socket.recv(HEADER_LENGTH)
 
 		if not len(header):
-			#print("deu ruim no header")
 			break
 
 		header = header.decode('utf-8').strip()
-		#print(header)
 
 		msg_it = int(header[0:4])
 		msg_type = int(header[4])
 		msg_tam = int(header[5:])
 		msg = client_socket.recv(msg_tam).decode('utf-8').strip()
-		print(msg)
 		
-
+		# Extracao dos estados dos atuadores
 		estado_aquecedor = msg[1:4]
 		estado_resfriador = msg[4:]
 		
-
+		# Impressao do Estado dos atuadores com o timestamp de seus respectivos sensores
 		print(f"{msg_it}\n\tEstado do Aquecedor: {estado_aquecedor}\n\tEstado do Resfriador: {estado_resfriador}")
 	break
 

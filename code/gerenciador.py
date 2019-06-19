@@ -1,11 +1,20 @@
+'''
+Codigo para simular o gerenciamento de um Gerenciador (Server) de uma estufa
+inteligente.
+O programa estabelece conexao com os Sensores e Atuadores, alem de receber/enviar relatorios e
+enviar comandos ON/OFF para os Atuadores.
+
+Bruno Mitsuo Homma 	9292625
+Danilo da Costa Telles Teo 	9293626
+
+
+'''
+
 import socket
 import select
-import errno
-import sys
 
-# 1 byte para o tipo da mensagem e mais 3 para o tamanho
-# tstmp | tipo | tam| ...
-# 0023 | 2 | 005 | ... 
+
+# 4 bytes para o timestamp, 1 byte para o tipo da mensagem e 3 para o tamanho
 HEADER_LENGTH = 8
 
 #Sensores e atuadores (global)
@@ -15,7 +24,6 @@ SENSOR_UM = 2
 
 ATUADOR_CO2 = 3
 AQUECEDOR_RESFRIADOR = 4
-#RESFRIADOR = 5
 IRRIGADOR = 5
 
 CLIENTE = 6
@@ -34,18 +42,15 @@ SET_PARS = 7
 
 # Definicao de porta e IP a serem utilizados
 IP = "127.0.0.1"
-
-# Configurar porta para cada elemento cliente...
 SENSOR_PORT = 1234
-# Start of aux functions
+
+# Start of aux functions-------------------------------------------------
 
 def receive_message(client_socket):
 	try:
-		#print("entrou no try")
 		header = client_socket.recv(HEADER_LENGTH)
 
 		if not len(header):
-			#print("entrou no if ruim")
 			return False
 
 		header = header.decode('utf-8').strip()
@@ -57,24 +62,21 @@ def receive_message(client_socket):
 		return {'iteration':msg_it, 'type': msg_type, 'tam': msg_tam, 'msg': msg}
 
 	except:
-		#print("entrou no except")
 		return False
 
+# End of aux functions-------------------------------------
 
 
-
-# End of aux functions
-
-
-# Configura socket para utilizar protocolo TCP e STREAM???
+# Configura socket para utilizar o IPv4 e o protocolo TCP
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-# Ver oq isso faz???
+# Facilitar a reexecucao de algum cliente sem warning de 'endereco ja esta em uso'
 server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 # Bind do socket a porta e ao IP
 server_socket.bind((IP, SENSOR_PORT))
 
+#Prepara o server para conexoes
 server_socket.listen()
 
 # Lista de sockets ativos,a principio apenas com o do server
@@ -97,10 +99,10 @@ medidas = {
 	'umidade_min': '30.00'
 }
 
-ITERACAO = 0
-IT_CO2 = -1
-IT_TEMP = -1
-IT_UMIDADE = -1
+ITERACAO = 0 # variavel de iteracao do gerenciador
+IT_CO2 = -1 # variavel de iteracao do sensor de CO2
+IT_TEMP = -1 # variavel de iteracao do sensor de temperatura
+IT_UMIDADE = -1 # variavel de iteracao do sensor de umidade
 
 while True:
 	# Salva todos os sockets prontos para leitura em read_sockets
@@ -118,21 +120,19 @@ while True:
 			else:
 
 				# Se nao for uma nova conexao recebe a mensagem do socket
-				
 				msg = receive_message(notified_socket)
 				
 				if msg is False:
 					break
 
-				#print("Conteudo da msg: " + str(msg))
 			
 				if msg['type'] == CONECTA_SENSOR or msg['type'] == CONECTA_ATUADOR:
+					
 					# Obtem o id do sensor/atuador que enviou
 					id_sender = int(msg['msg'][0])
 
 					#obtem a flag de requisicao (1, pedindo para conectar)
 					flag_req = int(msg['msg'][1])
-					#print(flag_req)
 					
 					if flag_req != 1:
 						out_msg_content = str(id_sender) + str(0) # n conectou
@@ -152,11 +152,12 @@ while True:
 						break
 
 				elif msg['type'] == SENSOR_SEND_REPORT:
+					
 					# Obtem a origem do envio do relatorio assim como o valor da medida
 					id_sender = int(msg['msg'][0])
 					val = msg['msg'][1:]
 
-					# atualiza o relatorio de medidas a ser enviado para o cliente
+					# atualiza o relatorio de medidas a ser enviado para o cliente e o timestamp
 					if id_sender == SENSOR_TEMP:
 						relatorio['temperatura'] = val
 						IT_TEMP = msg['iteration']
@@ -169,19 +170,18 @@ while True:
 						relatorio['umidade'] = val
 						IT_UMIDADE = msg['iteration']
 
-
-					#print(medidas)
-					#print(relatorio)
 				elif msg['type'] == SET_PARS:
+					# Atualiza as medidas limitantes determinadas pelo usuario
 					medidas['co2_max'] = msg['msg'][0:5]
 					medidas['co2_min'] = msg['msg'][5:10]
 					medidas['temp_max'] = msg['msg'][10:15]
 					medidas['temp_min'] = msg['msg'][15:20]
 					medidas['umidade_max'] = msg['msg'][20:25]
 					medidas['umidade_min'] = msg['msg'][25:30]
-					#print("SET_PARS: " + str(medidas))
+					
 
 				elif msg['type'] == REQUEST_REPORT:
+					# Envia o relatorio de medidas para o cliente
 					out_msg_content = relatorio['co2'] + relatorio['temperatura'] + relatorio['umidade']
 					out_msg_header = str(ITERACAO).zfill(4) + str(GERENCIADOR_SEND_REPORT) + str(len(out_msg_content)).zfill(3)
 					out_msg = (out_msg_header + out_msg_content).encode('utf-8')
@@ -269,7 +269,7 @@ while True:
 							break
 				
 				print(f"({ITERACAO}): {IT_CO2}, {IT_TEMP}, {IT_UMIDADE}")			
-				ITERACAO +=1
+				ITERACAO += 1
 
 for socket in sockets_list:
 	socket.close()				
